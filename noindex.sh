@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # This script creates a default .htaccess file that disables indexes on a newly
 # added website/domain. It assumes the path to the website is
 # ~/wwwroot/DOMAIN.TLD/SUBDOMAIN/public_html
