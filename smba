@@ -1,0 +1,124 @@
+#!/bin/bash
+
+# 03-01-2017
+# This script creates a mount point between the local file system and a Windows
+# network share. The mount point is always added to ~/mnt/MACHINE/SHARE.
+# ~~ Scott Johnson
+
+
+
+
+# Outputs the help.
+function show_help
+{
+    echo Useage: smba //server/share /path/local
+    exit 0
+} #/show_help()
+
+# Makes sure the network share exists.
+function validate_share
+{
+
+   echo "Validating host..."
+   # Connect to share and immediately quit.
+   SMB_TEST=$(smbclient $PATH_SHARE -A="$HOME/.smbcredentials" -c=quit 2>/dev/null)
+   
+   if [ -z "$SMB_TEST" ]; then
+      # No errors
+      echo Validated!
+      
+   else
+      # Errors
+      echo Failed to connect to $PATH_SHARE. Check your spelling.
+      exit 1
+      
+   fi
+    
+} #/validate_share()
+
+# Makes sure the mounted share doesn't already exist.
+function validate_mount
+{
+
+   echo "Validating mount..."
+   MOUNT_TEST=$(mount -t cifs | grep "$PATH_SHARE\s")
+   
+   if [[ $MOUNT_TEST =~ "$PATH_SHARE" ]]; then
+      echo "Mount already exists!"
+      exit 0
+   fi
+
+    
+} #/validate_mount()
+
+# Makes shure the local mount path exists.
+function ensure_dir
+{
+
+    # Check the existance of this directory.
+    if [ -d "$PATH_LOCAL" ]; then
+        echo "Directory already exists '$PATH_LOCAL'."
+    
+    else
+        # Create the target directory.
+        mkdir -p $PATH_LOCAL
+
+        # Check the existance of this directory.
+        if [ ! -d "$PATH_LOCAL" ]; then
+            echo "Directory not created '$PATH_LOCAL'."
+            exit 1
+        else
+            echo "Directory created '$PATH_LOCAL'."
+        fi
+        
+    fi
+
+    
+} #/ensure_dir()
+
+
+# Don't let the sever share argument be empty.
+if [ -z "$1" ]; then
+   show_help
+fi
+
+
+# Determines the local path the share will be mapped to. Should be "~/mnt/SERVER/SHARE
+PATH_LOCAL=~/mnt${1#/}
+
+# Determines the remote path the of the share
+PATH_SHARE=$1
+
+# Determines the username who called this script.
+# http://stackoverflow.com/questions/3522341/identify-user-in-a-bash-script-called-by-sudo
+USER_NAME=$(logname)
+
+# Determines the user id of who called this script.
+USER_ID=$(id -u $USER_NAME)
+
+
+
+# Determine if the network share exists.
+validate_share
+
+# Determine if this share is already mounted.
+validate_mount
+
+exit 1
+
+ensure_dir
+
+# Determines the shell command to run.
+CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID )
+
+
+# eval: http://stackoverflow.com/questions/2005192/how-to-execute-a-bash-command-stored-as-a-string-with-quotes-and-asterisk
+if "${CMD[@]}"; then
+    echo "done."
+    exit 0
+else
+    echo "failed."
+    exit 1
+fi
+
+exit 1
