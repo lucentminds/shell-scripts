@@ -104,8 +104,6 @@ validate_share
 # Determine if this share is already mounted.
 validate_mount
 
-exit 1
-
 ensure_dir
 
 # Determines the shell command to run.
