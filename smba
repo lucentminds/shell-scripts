@@ -5,7 +5,9 @@
 # network share. The mount point is always added to ~/mnt/MACHINE/SHARE.
 # ~~ Scott Johnson
 
-
+# https://bugs.launchpad.net/ubuntu/+source/cifs-utils/+bug/657900/comments/9
+# This page details how to mount and unmount cifs shares using "sudo" without a
+# password.
 
 
 # Outputs the help.
@@ -104,14 +106,15 @@ validate_share
 # Determine if this share is already mounted.
 validate_mount
 
+# Create mount directory if it doesn't already exist.
 ensure_dir
 
 # Determines the shell command to run.
-CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID )
-
+CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID,soft )
 
 # eval: http://stackoverflow.com/questions/2005192/how-to-execute-a-bash-command-stored-as-a-string-with-quotes-and-asterisk
 if "${CMD[@]}"; then
+    echo $PATH_LOCAL >> ~/.smba-shares
     echo "done."
     exit 0
 else
