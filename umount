@@ -9,5 +9,6 @@
 # See https://bugs.launchpad.net/ubuntu/+source/cifs-utils/+bug/657900/comments/9
 # ~~ Scott Johnson
 
-# Dolphin 
+# Dolphin picks this up from my bin dir and the shell doesn't seem to go into a 
+# loop if I do it this way.
 sudo umount $*
