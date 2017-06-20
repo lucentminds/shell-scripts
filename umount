@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# 06-20-2017
+# This script is a companion script for my smba script. This script allows the 
+# dolphin file manager to unmount cifs shares by inserting "sudo" at the front.
+# It is assumed that you do NOT have to enter a password for sudo when using the
+# umount command. This can be placed in a user's home directory where bin files
+# are kept.
+# See https://bugs.launchpad.net/ubuntu/+source/cifs-utils/+bug/657900/comments/9
+# ~~ Scott Johnson
+
+# Dolphin 
+sudo umount $*
