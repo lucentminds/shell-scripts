@@ -31,6 +31,7 @@ function validate_share
       
    else
       # Errors
+      echo "$SMB_TEST"
       echo Failed to connect to $PATH_SHARE. Check your spelling.
       exit 1
       
@@ -110,7 +111,7 @@ validate_mount
 ensure_dir
 
 # Determines the shell command to run.
-CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID,soft )
+CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID,soft,vers=2.1 )
 
 # eval: http://stackoverflow.com/questions/2005192/how-to-execute-a-bash-command-stored-as-a-string-with-quotes-and-asterisk
 if "${CMD[@]}"; then
@@ -118,7 +119,7 @@ if "${CMD[@]}"; then
     echo "done."
     exit 0
 else
-    echo "failed."
+    echo "mount.cifs failed."
     exit 1
 fi
 
