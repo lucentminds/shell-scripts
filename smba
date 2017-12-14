@@ -111,9 +111,23 @@ validate_mount
 ensure_dir
 
 # Determines the shell command to run.
+echo "Running mount.cifs v2.1 ..."
 CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID,soft,vers=2.1 )
 
 # eval: http://stackoverflow.com/questions/2005192/how-to-execute-a-bash-command-stored-as-a-string-with-quotes-and-asterisk
+if "${CMD[@]}"; then
+    echo $PATH_LOCAL >> ~/.smba-shares
+    echo "done."
+    exit 0
+fi
+
+
+
+
+# We may be connecting to an older samba server. Try version 1.0.
+echo "Running mount.cifs v1.0 ..."
+CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID,soft,vers=1.0 )
+
 if "${CMD[@]}"; then
     echo $PATH_LOCAL >> ~/.smba-shares
     echo "done."
