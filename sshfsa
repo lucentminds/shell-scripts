@@ -1,0 +1,203 @@
+#!/bin/bash
+
+# 04-27-2018
+# This script creates a mount point between the local file system and an ssh
+# server session. The mount point is always added to ~/mnt/HOST/SHARE. Provides
+# quick and dirty mounting and unmounting of familiar ssh accounts.
+# ~~ Scott Johnson
+
+
+# Outputs the help.
+function show_help
+{
+    echo "Useage: sshfsa host|ipaddress [options]
+    
+    general options:
+    -v   --verbose         output lots of information.
+    -h   --help            print help.
+    -u   --unmount         unmounts the file share if mounted"
+    
+    exit 0
+} #/show_help()
+
+
+function parse_options
+{
+
+
+    OPTS=`getopt -o vhu --long verbose,help,unmount -n 'parse_options' -- "$@"`
+    # verbose "$OPTS"
+    eval set -- "$OPTS"
+    VERBOSE=false
+    UNMOUNT=false
+
+    while true; do
+    case "$1" in
+        -v | --verbose ) VERBOSE=true; shift ;;
+        -u | --unmount ) UNMOUNT=true; shift ;;
+        -h | --help )  show_help; exit 0 ;;
+        -- ) shift; break ;;
+        * ) break ;;
+    esac
+    done
+} #/parse_options()
+
+
+function verbose
+{
+    if $VERBOSE ; then
+    echo $@
+    fi
+} #/parse_options()
+
+# Makes sure the network share exists.
+function validate_host
+{
+
+    verbose "Validating host \"$HOST_NAME\" using nslookup..."
+    
+    # Connect to share and immediately quit.
+    if $VERBOSE ; then
+        nslookup $HOST_NAME || exit 1
+    else
+        nslookup $HOST_NAME 1>/dev/null || exit 1
+    fi
+    
+    
+} #/validate_host()
+
+# Fetch the information needed to ssh into host.
+function get_host_info
+{
+    case $HOST_NAME in
+    "127.0.0.1")
+        # local ssh
+        
+        # Determines the full path to the local folder that will hold the mount.
+        PATH_LOCAL=~/mnt/localhost
+        
+        # Determines the sshfs command to connect with.
+        SSHFS_COMMAND="/usr/bin/sshfs localhost:/var/www $PATH_LOCAL"
+        
+        # Determines the path that should exist if the mount is already active.
+        MOUNT_PATH="$PATH_LOCAL/public_html"        
+    ;;
+    
+    *)
+        echo "Host \"$HOST_NAME\" not found."
+        exit 1
+        
+    esac
+} #/get_host_info()
+
+
+# Makes sure the mounted share doesn't already exist.
+function validate_mount
+{
+
+   verbose "Validating mount \"$PATH_LOCAL\" ..."
+   MOUNT_TEST=$(find $MOUNT_PATH -mindepth 1 2>/dev/null |read)
+   
+   if  [ $MOUNT_TEST ] ; then
+      verbose "Mount already exists! | not empty"
+      # Output final mount location.
+      echo $PATH_LOCAL
+      exit 0
+      
+   else
+      verbose "Mount does not yet exist."
+      
+   fi
+
+    
+} #/validate_mount()
+
+# Makes sure the local mount path exists.
+function ensure_dir
+{
+
+    # Check the existance of this directory.
+    if [ -d "$PATH_LOCAL" ]; then
+        verbose "Directory already exists '$PATH_LOCAL'."
+    
+    else
+        # Create the target directory.
+        mkdir -p $PATH_LOCAL
+
+        # Check the existance of this directory.
+        if [ ! -d "$PATH_LOCAL" ]; then
+            verbose "Directory not created '$PATH_LOCAL'."
+            exit 1
+        else
+            verbose "Directory created '$PATH_LOCAL'."
+        fi
+        
+    fi
+
+    
+} #/ensure_dir()
+
+# Makes sure the local mount path exists.
+function unmount_share
+{
+
+    verbose "Checking mount \"$MOUNT_PATH\" ..."
+
+    if  [ -d $MOUNT_PATH ] ; then
+        verbose "Mount exists! Unmounting..."
+        fusermount -u $PATH_LOCAL || exit 1
+        exit 0
+        
+    else
+        echo "Mount \"$PATH_LOCAL\" is not mounted."
+        exit 1
+    fi
+
+    
+} #/unmount_share()
+
+parse_options $@
+
+
+# Don't let the sever share argument be empty.
+if [ -z "$1" ]; then
+   show_help
+fi
+
+# Determines the local path the share will be mapped to. Should be "~/mnt/SERVER/SHARE
+# $PATH_LOCAL
+
+
+# Determines the remote path the of the share
+HOST_NAME=$1
+verbose HOST_NAME=$HOST_NAME
+
+# Create mount directory if it doesn't already exist.
+get_host_info
+
+
+if $UNMOUNT ; then
+    unmount_share
+    exit 0
+fi
+
+verbose PATH_LOCAL=$PATH_LOCAL
+
+# Determine if the network share exists.
+validate_host
+
+# Determine if this share is already mounted.
+validate_mount
+
+# Create mount directory if it doesn't already exist.
+ensure_dir
+
+# Determines the shell command to run.
+verbose "$SSHFS_COMMAND ..."
+$SSHFS_COMMAND || exit 1
+
+# Output final mount location.
+echo $PATH_LOCAL
+exit 0
+
+exit 1
