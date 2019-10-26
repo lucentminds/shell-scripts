@@ -13,9 +13,48 @@
 # Outputs the help.
 function show_help
 {
-    echo Useage: smba //server/share /path/local
+    echo Useage: smba //server/share /path/local --smb 2
     exit 0
 } #/show_help()
+
+
+
+# Determines the version of the smb protocol to try first.
+SMB_VERSION="?"
+
+# Determines if we should show help.
+SHOW_HELP=0
+
+# Parse arguments.
+POSITIONAL=""
+while (( "$#" )); do
+    key="$1"
+    case $key in
+        -s|--smb)
+        SMB_VERSION="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        --help)
+        SHOW_HELP=1
+        shift # past argument
+        ;;
+        --*)
+        echo "Invalid option: $1"
+        show_help
+        exit 0
+        ;;
+        *)    # unknown option
+        POSITIONAL+="$1" # save it in an array for later
+        shift # past argument
+        ;;
+    esac
+done
+eval set -- "$POSITIONAL" # restore positional parameters
+
+
+
+
 
 # Makes sure the network share exists.
 function validate_share
@@ -79,15 +118,15 @@ function ensure_dir
     
 } #/ensure_dir()
 
-
-# Don't let the sever share argument be empty.
-if [ -z "$1" ]; then
+# Don't let the server share argument be empty.
+if [ -z "$1" ] || [ $SHOW_HELP = 1 ]; then
    show_help
+   exit 0
 fi
-
 
 # Determines the local path the share will be mapped to. Should be "~/mnt/SERVER/SHARE
 PATH_LOCAL=~/mnt${1#/}
+
 
 # Determines the remote path the of the share
 PATH_SHARE=$1
@@ -110,31 +149,48 @@ validate_mount
 # Create mount directory if it doesn't already exist.
 ensure_dir
 
-# Determines the shell command to run.
-echo "Running mount.cifs v2.1 ..."
-CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID,soft,vers=2.1 )
-
-# eval: http://stackoverflow.com/questions/2005192/how-to-execute-a-bash-command-stored-as-a-string-with-quotes-and-asterisk
-if "${CMD[@]}"; then
-    echo $PATH_LOCAL >> ~/.smba-shares
-    echo "done."
-    exit 0
-fi
 
 
+# Don't let the server share argument be empty.
+if [ $SMB_VERSION = "?" ] || [ $SMB_VERSION = 2 ]; then
+
+    # Determines the shell command to run.
+    echo "Running mount.cifs v2.1 ..."
+
+    CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID,soft,vers=2.1 )
+
+    # eval: http://stackoverflow.com/questions/2005192/how-to-execute-a-bash-command-stored-as-a-string-with-quotes-and-asterisk
+    if "${CMD[@]}"; then
+        echo $PATH_LOCAL >> ~/.smba-shares
+        echo "done."
+        exit 0
+    fi
+
+    if [ $SMB_VERSION = 2 ]; then
+        echo "mount.cifs v2.1 failed."
+        exit 1
+    fi
+fi # /run cifs 2.1
 
 
-# We may be connecting to an older samba server. Try version 1.0.
-echo "Running mount.cifs v1.0 ..."
-CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID,soft,vers=1.0 )
 
-if "${CMD[@]}"; then
-    echo $PATH_LOCAL >> ~/.smba-shares
-    echo "done."
-    exit 0
-else
-    echo "mount.cifs failed."
-    exit 1
-fi
 
+if [ $SMB_VERSION = "?" ] || [ $SMB_VERSION = 1 ]; then
+    # We may be connecting to an older samba server. Try version 1.0.
+    echo "Running mount.cifs v1.0 ..."
+    CMD=( sudo mount.cifs $1 $PATH_LOCAL -o credentials=~/.smbcredentials,file_mode=0775,dir_mode=0775,gid=$USER_ID,uid=$USER_ID,soft,vers=1.0 )
+
+    if "${CMD[@]}"; then
+        echo $PATH_LOCAL >> ~/.smba-shares
+        echo "done."
+        exit 0
+    fi
+
+    if [ $SMB_VERSION = 1 ]; then
+        echo "mount.cifs v1.0 failed."
+        exit 1
+    fi
+fi # /run cifs 2.1
+
+echo "mount.cifs failed."
 exit 1
